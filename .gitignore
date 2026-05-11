@@ -1,0 +1,32 @@
+# ESP-IDF build output
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/dependencies.lock
+firmware/managed_components/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+*.egg
+.pytest_cache/
+backend/.env
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+
+# Sisyphus internal (work tracking)
+.sisyphus/run-continuation/
