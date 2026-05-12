@@ -1,79 +1,79 @@
-# I2C Verification Worksheet
+# I2C 验证工作表
 
-## Test Setup
+## 测试设置
 
-| Parameter | Value |
+| 参数 | 值 |
 |-----------|-------|
 | SDA | GPIO 2 |
 | SCL | GPIO 1 |
 | SDB | GPIO 8 |
-| TCA9548A Address | 0x70 (A0=A1=A2=GND) |
-| AHT21 Address | 0x38 |
-| IS31FL3729 Address | 0x34 (AD0=AD1=GND) |
-| Mux Channels Used | 0-5 (6 channels) |
+| TCA9548A 地址 | 0x70 (A0=A1=A2=GND) |
+| AHT21 地址 | 0x38 |
+| IS31FL3729 地址 | 0x34 (AD0=AD1=GND) |
+| 多路复用器占用通道 | 0-5（共6通道） |
 
-## Expected Device Map
+## 预期设备映射
 
-| Bus | Address | Device | Expected | Found? |
+| 总线 | 地址 | 设备 | 期望结果 | 已找到？ |
 |-----|---------|--------|----------|--------|
-| Main | 0x38 | AHT21 | ✓ | ☐ |
-| Main | 0x70 | TCA9548A | ✓ | ☐ |
-| Mux Ch0 | 0x34 | IS31FL3729 #1 | ✓ | ☐ |
-| Mux Ch1 | 0x34 | IS31FL3729 #2 | ✓ | ☐ |
-| Mux Ch2 | 0x34 | IS31FL3729 #3 | ✓ | ☐ |
-| Mux Ch3 | 0x34 | IS31FL3729 #4 | ✓ | ☐ |
-| Mux Ch4 | 0x34 | IS31FL3729 #5 | ✓ | ☐ |
-| Mux Ch5 | 0x34 | IS31FL3729 #6 | ✓ | ☐ |
+| 主总线 | 0x38 | AHT21 | ✓ | ☐ |
+| 主总线 | 0x70 | TCA9548A | ✓ | ☐ |
+| 复用器 Ch0 | 0x34 | IS31FL3729 #1 | ✓ | ☐ |
+| 复用器 Ch1 | 0x34 | IS31FL3729 #2 | ✓ | ☐ |
+| 复用器 Ch2 | 0x34 | IS31FL3729 #3 | ✓ | ☐ |
+| 复用器 Ch3 | 0x34 | IS31FL3729 #4 | ✓ | ☐ |
+| 复用器 Ch4 | 0x34 | IS31FL3729 #5 | ✓ | ☐ |
+| 复用器 Ch5 | 0x34 | IS31FL3729 #6 | ✓ | ☐ |
 
-## Test Sequence
+## 测试步骤
 
-### 1. SDB Control Verification
+### 1. SDB 控制验证
 
-| Step | Action | Expected Result | Actual | Pass? |
+| 步骤 | 操作 | 预期结果 | 实际结果 | 通过？ |
 |------|--------|-----------------|--------|-------|
-| 1.1 | SDB=LOW, scan main bus | 0x38 + 0x70 only | | ☐ |
-| 1.2 | SDB=HIGH, scan main bus | 0x38 + 0x70 only (mux isolates 0x34) | | ☐ |
+| 1.1 | SDB=LOW，扫描主总线 | 仅 0x38 + 0x70 | | ☐ |
+| 1.2 | SDB=HIGH，扫描主总线 | 仅 0x38 + 0x70（多路复用器隔离了 0x34） | | ☐ |
 
-### 2. Mux Channel Scan
+### 2. 多路复用器通道扫描
 
-| Step | Action | Expected Result | Actual | Pass? |
+| 步骤 | 操作 | 预期结果 | 实际结果 | 通过？ |
 |------|--------|-----------------|--------|-------|
-| 2.1 | Mux Ch0 scan @ 100kHz | 0x34 found | | ☐ |
-| 2.2 | Mux Ch1 scan @ 100kHz | 0x34 found | | ☐ |
-| 2.3 | Mux Ch2 scan @ 100kHz | 0x34 found | | ☐ |
-| 2.4 | Mux Ch3 scan @ 100kHz | 0x34 found | | ☐ |
-| 2.5 | Mux Ch4 scan @ 100kHz | 0x34 found | | ☐ |
-| 2.6 | Mux Ch5 scan @ 100kHz | 0x34 found | | ☐ |
+| 2.1 | 复用器 Ch0 扫描 @ 100kHz | 发现 0x34 | | ☐ |
+| 2.2 | 复用器 Ch1 扫描 @ 100kHz | 发现 0x34 | | ☐ |
+| 2.3 | 复用器 Ch2 扫描 @ 100kHz | 发现 0x34 | | ☐ |
+| 2.4 | 复用器 Ch3 扫描 @ 100kHz | 发现 0x34 | | ☐ |
+| 2.5 | 复用器 Ch4 扫描 @ 100kHz | 发现 0x34 | | ☐ |
+| 2.6 | 复用器 Ch5 扫描 @ 100kHz | 发现 0x34 | | ☐ |
 
-### 3. High-Speed Scan (400kHz)
+### 3. 高速扫描（400kHz）
 
-| Step | Action | Expected Result | Actual | Pass? |
+| 步骤 | 操作 | 预期结果 | 实际结果 | 通过？ |
 |------|--------|-----------------|--------|-------|
-| 3.1 | Ch0 scan @ 400kHz | 0x34 found, no errors | | ☐ |
-| 3.2 | Ch1 scan @ 400kHz | 0x34 found, no errors | | ☐ |
+| 3.1 | Ch0 扫描 @ 400kHz | 发现 0x34，无错误 | | ☐ |
+| 3.2 | Ch1 扫描 @ 400kHz | 发现 0x34，无错误 | | ☐ |
 
-## Signal Integrity Checks
+## 信号完整性检查
 
-| Test | 100kHz | 400kHz | Notes |
+| 测试项 | 100kHz | 400kHz | 备注 |
 |------|--------|--------|-------|
-| All 8 devices found? | ☐ | ☐ | |
-| SDB correctly isolates? | ☐ | ☐ | |
-| Waveform clean? | ☐ | ☐ | Check rise time, no ringing on scope |
-| Communication errors? | ☐ | ☐ | ZERO errors expected |
-| Pull-up resistors adequate? | ☐ | ☐ | 4.7kΩ typical, verify edges |
+| 全部8个设备均已找到？ | ☐ | ☐ | |
+| SDB 正确隔离？ | ☐ | ☐ | |
+| 波形干净？ | ☐ | ☐ | 检查上升时间，示波器上不应有振铃 |
+| 通信错误？ | ☐ | ☐ | 预期零错误 |
+| 上拉电阻是否合适？ | ☐ | ☐ | 典型值 4.7kΩ，检查边沿 |
 
-## Selected I2C Frequency
+## 选定 I2C 频率
 
-**Final choice:** ______ kHz
+**最终选择:** ______ kHz
 
-**Reason:** ___________________________
+**理由:** ___________________________
 
-## Results Summary
+## 结果汇总
 
-| Test | Pass/Fail | Notes |
+| 测试项 | 通过/失败 | 备注 |
 |------|-----------|-------|
-| SDB isolation | | |
-| Mux channel scan | | |
-| 400kHz stability | | |
+| SDB 隔离 | | |
+| 多路复用器通道扫描 | | |
+| 400kHz 稳定性 | | |
 
-**Verified by:** _________________ **Date:** _________________
+**验证人:** _________________ **日期:** _________________

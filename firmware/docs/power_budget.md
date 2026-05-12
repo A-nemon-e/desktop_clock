@@ -1,47 +1,47 @@
-# Power Budget — Desktop Clock
+# 功耗预算 — 桌面时钟
 
-## Measurement Worksheet
+## 测量工作表
 
-| Condition | USB 5V Current (A) | LED Power (W) | Notes |
+| 状态 | USB 5V 电流 (A) | LED 功率 (W) | 备注 |
 |-----------|---------------------|---------------|-------|
-| All LEDs OFF (GCC=0, PWM=0) | ___ A | ___ W | Baseline (ESP32 only) |
-| Low brightness (GCC=5, PWM=128) | ___ A | ___ W | |
-| Medium brightness (GCC=20, PWM=128) | ___ A | ___ W | Default safe |
-| High brightness (GCC=40, PWM=255) | ___ A | ___ W | Hard limit |
-| Max (GCC=127, PWM=255) | ___ A | ___ W | DANGER — brief test only |
+| 全部 LED 关闭 (GCC=0, PWM=0) | ___ A | ___ W | 基线（仅 ESP32） |
+| 低亮度 (GCC=5, PWM=128) | ___ A | ___ W | |
+| 中等亮度 (GCC=20, PWM=128) | ___ A | ___ W | 默认安全值 |
+| 高亮度 (GCC=40, PWM=255) | ___ A | ___ W | 硬限制 |
+| 最大 (GCC=127, PWM=255) | ___ A | ___ W | 危险 — 仅做短暂测试 |
 
-## Instructions
+## 操作说明
 
-1. Connect USB power meter between PSU and device
-2. Flash test firmware that sets GCC/PWM to each level
-3. Record current at each level
-4. Calculate safe GCC limit where current < 2.0A (USB spec)
-5. Set `MAX_GCC_VALUE` to 90% of that limit
+1. 将 USB 功率计连接到电源与设备之间
+2. 烧录设置 GCC/PWM 到各级别的测试固件
+3. 记录各级别的电流值
+4. 计算电流 < 2.0A（USB 规范）的安全 GCC 限制值
+5. 将 `MAX_GCC_VALUE` 设置为该限制值的 90%
 
-## IS31FL3729 Registers Reference
+## IS31FL3729 寄存器参考
 
-| Register | Address | Description |
+| 寄存器 | 地址 | 说明 |
 |----------|---------|-------------|
-| CONFIG | 0xA0 | Configuration (PD, SD, SS1, SS2, Sync) |
-| GCC | 0xA1 | Global Current Control (0-127) |
-| PWM base | 0x01 | Per-channel PWM (burst write 0x01-0x60 for 96 channels) |
+| CONFIG | 0xA0 | 配置（PD、SD、SS1、SS2、同步） |
+| GCC | 0xA1 | 全局电流控制（0-127） |
+| PWM 基址 | 0x01 | 每通道 PWM（批量写入 0x01-0x60 覆盖 96 通道） |
 
-## LED Matrix Parameters
+## LED 矩阵参数
 
-| Parameter | Value |
+| 参数 | 值 |
 |-----------|-------|
-| Matrix size | 48 × 16 = 768 LEDs |
-| LED type | White LED (Vf ~3.0-3.4V) |
-| Max per-LED current | 20mA |
-| Driver efficiency (est.) | ~85% |
-| USB power limit | 5V / 2A = 10W |
-| ESP32-S3 consumption | ~0.5W |
-| Available LED power | ~9.5W |
-| Theoretical max draw | ~50.7W (GCC=127, all PWM=255) |
-| Default GCC limit | 20 (~2.4A total) |
-| Hard GCC limit | 40 (~4.8A total) |
+| 矩阵尺寸 | 48 × 16 = 768 个 LED |
+| LED 类型 | 白色 LED（Vf ~3.0-3.4V） |
+| 每 LED 最大电流 | 20mA |
+| 驱动器效率（估计） | ~85% |
+| USB 功率限制 | 5V / 2A = 10W |
+| ESP32-S3 功耗 | ~0.5W |
+| LED 可用功率 | ~9.5W |
+| 理论最大功耗 | ~50.7W（GCC=127, 全部 PWM=255） |
+| 默认 GCC 限制 | 20（约 2.4A 总电流） |
+| 硬 GCC 限制 | 40（约 4.8A 总电流） |
 
-## Formula
+## 计算公式
 
 ```
 I_total ≈ (GCC / 127) × 768 × 20mA × (3.3V / 5V) / efficiency

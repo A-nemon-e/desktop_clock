@@ -1,161 +1,161 @@
-# Desktop Clock ESP32-S3 Flashing and Hardware Verification Guide
+# 桌面时钟 ESP32-S3 烧录与硬件验证指南
 
-Firmware version: 0.1.0 | Hardware revision: 0.1 | Target: ESP32-S3 (16MB Flash)
+固件版本: 0.1.0 | 硬件版本: 0.1 | 目标芯片: ESP32-S3 (16MB Flash)
 
 ---
 
-## 1. Prerequisites
+## 1. 前置条件
 
-### 1.1 ESP-IDF v5.5 Installation
+### 1.1 ESP-IDF v5.5 安装
 
-Verify your ESP-IDF installation is present and matches the required version:
+验证你的 ESP-IDF 安装是否存在且版本匹配：
 
 ```bash
 ls ~/.espressif/v5.5.4/esp-idf/
 ```
 
-If the directory exists, source the export script and confirm:
+若目录存在，执行导出脚本并确认：
 
 ```bash
 . ~/.espressif/v5.5.4/esp-idf/export.sh
 idf.py --version
 ```
 
-The installation path `~/.espressif/v5.5.4/esp-idf/` is used throughout this guide. Adjust if your ESP-IDF is installed elsewhere.
+本指南全文使用安装路径 `~/.espressif/v5.5.4/esp-idf/`。若你的 ESP-IDF 安装在其他位置，请相应调整。
 
-### 1.2 USB Driver
+### 1.2 USB 驱动
 
-| OS      | Driver Required                                     |
+| 操作系统 | 所需驱动 |
 |---------|-----------------------------------------------------|
-| Linux   | None (CDC-ACM kernel module, loaded automatically)  |
-| macOS   | None (built-in CDC-ACM support)                     |
+| Linux | 无（CDC-ACM 内核模块，自动加载） |
+| macOS | 无（内建 CDC-ACM 支持） |
 | Windows | [CP210x USB to UART Bridge VCP Drivers](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers) |
 
-The ESP32-S3 on-board USB-to-UART bridge uses a CP2102 or CH343 chip. On Linux, verify the driver is loaded:
+ESP32-S3 板载 USB 转 UART 桥接器使用 CP2102 或 CH343 芯片。在 Linux 上，验证驱动是否已加载：
 
 ```bash
 lsmod | grep cp210x
-# or
+# 或
 lsmod | grep ch341
 ```
 
-If nothing appears, the driver is built into the kernel (common on modern distributions).
+若没有任何输出，说明驱动已编译进内核（现代发行版的常见情况）。
 
-### 1.3 Hardware Connection
+### 1.3 硬件连接
 
-1. Use a USB **data** cable (Type-C to Type-A or Type-C to Type-C). Charging-only cables will not work.
-2. Connect the Type-C end to the ESP32-S3 board.
-3. Connect the USB-A (or Type-C) end to your computer.
+1. 使用 USB **数据线**（Type-C 转 Type-A 或 Type-C 转 Type-C）。纯充电线无法工作。
+2. 将 Type-C 端连接到 ESP32-S3 开发板。
+3. 将 USB-A（或 Type-C）端连接到你的电脑。
 
-### 1.4 Verify Serial Port
+### 1.4 验证串口
 
-After connecting, the board appears as a serial device.
+连接后，开发板会显示为一个串口设备。
 
-**Linux:**
+**Linux：**
 
 ```bash
 ls /dev/ttyUSB*
-# Expected: /dev/ttyUSB0 (or /dev/ttyUSB1 if other devices present)
+# 预期: /dev/ttyUSB0（若存在其他设备可能为 /dev/ttyUSB1）
 
-# Alternative check via kernel messages:
+# 通过内核消息的替代检查方式:
 dmesg | grep -i "cp210x\|ch341\|ttyUSB" | tail -5
 ```
 
-**macOS:**
+**macOS：**
 
 ```bash
 ls /dev/cu.*
-# Expected: /dev/cu.usbserial-XXXX or /dev/cu.SLAB_USBtoUART
+# 预期: /dev/cu.usbserial-XXXX 或 /dev/cu.SLAB_USBtoUART
 ```
 
-**Windows:**
+**Windows：**
 
-Check Device Manager under "Ports (COM & LPT)" for "Silicon Labs CP210x USB to UART Bridge (COMx)". Note the COM port number (e.g., COM3).
+在设备管理器中查看"端口 (COM 和 LPT)"下的"Silicon Labs CP210x USB to UART Bridge (COMx)"。记录 COM 端口号（如 COM3）。
 
-If no device appears:
-- Verify the USB cable is a data cable (test with another device).
-- Try a different USB port on your computer.
-- On Windows, install the CP210x driver linked in section 1.2.
+如果没有设备出现：
+- 验证 USB 数据线确实是数据线（用其他设备测试）。
+- 尝试电脑上另一个 USB 端口。
+- 在 Windows 上，安装第 1.2 节中链接的 CP210x 驱动。
 
 ---
 
-## 2. First Flash (Factory Firmware)
+## 2. 首次烧录（出厂固件）
 
-### 2.1 Set Target and Build
+### 2.1 设置目标并构建
 
 ```bash
-# Navigate to firmware directory
+# 进入固件目录
 cd ~/260510_clock/firmware
 
-# Source ESP-IDF environment
+# 加载 ESP-IDF 环境
 . ~/.espressif/v5.5.4/esp-idf/export.sh
 
-# Set target chip (one-time, creates sdkconfig)
+# 设置目标芯片（一次性操作，创建 sdkconfig）
 idf.py set-target esp32s3
 
-# Build the firmware
+# 构建固件
 idf.py build
 ```
 
-Explanation:
-- `set-target esp32s3` writes `CONFIG_IDF_TARGET_ESP32S3=y` into sdkconfig. The sdkconfig.defaults file already specifies this and other settings (PSRAM, 16MB flash, custom partition table, OTA, WiFi, MQTT, certificate bundle, SPIFFS), so most configuration is pre-applied.
-- `idf.py build` compiles all components: main firmware (app_main.c, render_task.c) plus 17 component libraries (I2C mux, LED matrix drivers, display, WiFi manager, NTP, MQTT, cards, thin mode, OTA, etc.).
+说明：
+- `set-target esp32s3` 将 `CONFIG_IDF_TARGET_ESP32S3=y` 写入 sdkconfig。`sdkconfig.defaults` 文件已经指定了此项及其他设置（PSRAM、16MB flash、自定义分区表、OTA、WiFi、MQTT、证书包、SPIFFS），因此大部分配置已预先应用。
+- `idf.py build` 编译所有组件：主固件（app_main.c、render_task.c）加上 17 个组件库（I2C 多路复用器、LED 矩阵驱动、显示、WiFi 管理器、NTP、MQTT、卡片、瘦模式、OTA 等）。
 
-### 2.2 Flash and Monitor
+### 2.2 烧录并监控
 
 ```bash
-# Replace /dev/ttyUSB0 with your actual port
+# 将 /dev/ttyUSB0 替换为你的实际端口
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-This single command:
-1. Erases and writes the bootloader, partition table, and factory app to flash.
-2. Opens a serial monitor at 115200 baud (ESP-IDF default).
+这条命令完成以下操作：
+1. 擦除并向 flash 写入 bootloader、分区表和出厂固件。
+2. 以 115200 波特率（ESP-IDF 默认值）打开串口监控。
 
-**Baud rate:** 115200 (set by ESP-IDF monitor, not configurable via this command).
+**波特率：** 115200（由 ESP-IDF 监控器设置，无法通过此命令配置）。
 
-**To exit the monitor:** Press `Ctrl+]` (Control + right bracket). On some keyboards, this is `Ctrl` + `]` (the key to the right of `P`).
+**退出监控：** 按下 `Ctrl+]`（Control + 右方括号）。在某些键盘上为 `Ctrl` + `]`（`P` 键右侧的键）。
 
-If the flash step fails with a connection error:
+如果烧录步骤因连接错误而失败：
 
-1. Hold the **BOOT** button on the ESP32-S3 board.
-2. While holding BOOT, press and release the **RST** (EN) button.
-3. Release BOOT.
-4. The chip enters download mode. Re-run the flash command.
+1. 按住 ESP32-S3 开发板上的 **BOOT** 按钮。
+2. 按住 BOOT 的同时，按下并释放 **RST**（EN）按钮。
+3. 释放 BOOT。
+4. 芯片进入下载模式。重新执行烧录命令。
 
-Alternatively, on some boards, holding BOOT during the entire flash process (until you see "Writing at 0x...") achieves the same result.
+或者在某些开发板上，在整个烧录过程中按住 BOOT（直到看到"Writing at 0x..."）也能达到相同效果。
 
-### 2.3 First Boot Sequence
+### 2.3 首次启动流程
 
-On first boot, the firmware goes through these steps (visible on the serial monitor):
+首次启动时，固件按以下步骤执行（可在串口监控中查看）：
 
-1. NVS flash initialization (auto-erase if corrupted).
-2. MAC address read from eFuse.
-3. I2C bus initialization (GPIO1=SCL, GPIO2=SDA, 400kHz).
-4. SDB pin (GPIO8) driven LOW, then LED drivers initialized through TCA9548A mux (6 channels).
-5. Display framebuffer allocated, display task created (priority 5).
-6. Render task created (priority 4).
-7. Card manager loads saved configuration from NVS.
-8. WiFi manager starts. Since no credentials are saved, it enters **AP mode**.
-9. The board creates a WiFi access point named `Clock-Config-XXXX` (where XXXX is derived from the MAC address).
-10. The main loop waits for button events.
+1. NVS flash 初始化（损坏时自动擦除）。
+2. 从 eFuse 读取 MAC 地址。
+3. I2C 总线初始化（GPIO1=SCL，GPIO2=SDA，400kHz）。
+4. SDB 引脚（GPIO8）拉低，然后通过 TCA9548A 多路复用器（6 通道）初始化 LED 驱动。
+5. 分配显示帧缓冲，创建显示任务（优先级 5）。
+6. 创建渲染任务（优先级 4）。
+7. 卡片管理器从 NVS 加载已保存的配置。
+8. WiFi 管理器启动。由于没有已保存的凭据，进入 **AP 模式**。
+9. 开发板创建名为 `Clock-Config-XXXX`（其中 XXXX 从 MAC 地址派生）的 WiFi 接入点。
+10. 主循环等待按键事件。
 
-If WiFi credentials were previously saved and the stored network is reachable, the firmware will instead:
-- Connect to WiFi in STA mode.
-- Perform geo-location via IP.
-- Sync time via NTP.
-- Connect to MQTT broker at the configured backend URL.
-- Begin displaying the clock face.
+如果之前已保存 WiFi 凭据且存储的网络可达，固件将改为：
+- 以 STA 模式连接 WiFi。
+- 通过 IP 执行地理定位。
+- 通过 NTP 同步时间。
+- 连接到已配置后端 URL 的 MQTT Broker。
+- 开始显示时钟画面。
 
 ---
 
-## 3. I2C Device Scan (Hardware Verification)
+## 3. I2C 设备扫描（硬件验证）
 
-The I2C scan firmware tests signal integrity on the main I2C bus and through all 6 channels of the TCA9548A multiplexer.
+I2C 扫描固件测试主 I2C 总线及 TCA9548A 多路复用器全部 6 个通道的信号完整性。
 
-### 3.1 Modify CMakeLists.txt
+### 3.1 修改 CMakeLists.txt
 
-Edit `firmware/main/CMakeLists.txt`. Change the `SRCS` line to include only `i2c_scan.c`:
+编辑 `firmware/main/CMakeLists.txt`。将 `SRCS` 行改为仅包含 `i2c_scan.c`：
 
 ```cmake
 idf_component_register(
@@ -166,23 +166,23 @@ idf_component_register(
 )
 ```
 
-The original line reads:
+原始行内容为：
 ```cmake
     SRCS "app_main.c" "gpio_test.c" "i2c_scan.c" "render_task.c"
 ```
 
-The `REQUIRES` line can remain unchanged. The i2c_scan.c firmware source does not use these component libraries, but leaving them causes no harm (UNUSED symbols are simply not linked).
+`REQUIRES` 行可以保持不变。i2c_scan.c 固件源码不使用这些组件库，但保留它们不会造成影响（UNUSED 符号不会被链接）。
 
-### 3.2 Build and Flash
+### 3.2 构建并烧录
 
 ```bash
 idf.py build
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-### 3.3 Expected Output
+### 3.3 预期输出
 
-The scan runs 4 tests sequentially:
+扫描依次执行 4 项测试：
 
 ```
 ========================================
@@ -230,43 +230,43 @@ The scan runs 4 tests sequentially:
 ========================================
 ```
 
-**Summary of expected devices:**
+**预期设备汇总：**
 
-| Device       | I2C Address | Location             |
+| 设备 | I2C 地址 | 所在位置 |
 |--------------|-------------|----------------------|
-| AHT21        | 0x38        | Main bus (direct)    |
-| TCA9548A     | 0x70        | Main bus (direct)    |
-| IS31FL3729   | 0x34        | Mux channel 0        |
-| IS31FL3729   | 0x34        | Mux channel 1        |
-| IS31FL3729   | 0x34        | Mux channel 2        |
-| IS31FL3729   | 0x34        | Mux channel 3        |
-| IS31FL3729   | 0x34        | Mux channel 4        |
-| IS31FL3729   | 0x34        | Mux channel 5        |
+| AHT21 | 0x38 | 主总线（直连） |
+| TCA9548A | 0x70 | 主总线（直连） |
+| IS31FL3729 | 0x34 | 复用器通道 0 |
+| IS31FL3729 | 0x34 | 复用器通道 1 |
+| IS31FL3729 | 0x34 | 复用器通道 2 |
+| IS31FL3729 | 0x34 | 复用器通道 3 |
+| IS31FL3729 | 0x34 | 复用器通道 4 |
+| IS31FL3729 | 0x34 | 复用器通道 5 |
 
-Total: **8 devices**.
+总计：**8 个设备**。
 
-### 3.4 Troubleshooting I2C Scan
+### 3.4 I2C 扫描故障排除
 
-**Only 2 devices found (0x38 and 0x70, no channel devices):**
-- Check that SDB (GPIO8) is pulled high. The scan sets SDB=HIGH before channel tests. Verify with a multimeter that GPIO8 measures ~3.3V.
-- Check the physical connection between GPIO8 and the SDB pins of all 6 IS31FL3729 chips.
+**仅发现 2 个设备（0x38 和 0x70，无通道设备）：**
+- 检查 SDB（GPIO8）是否被拉高。扫描在通道测试前将 SDB 设为 HIGH。用万用表验证 GPIO8 测量值约 3.3V。
+- 检查 GPIO8 与全部 6 个 IS31FL3729 芯片 SDB 引脚之间的物理连接。
 
-**No devices found at all:**
-- Verify I2C pull-up resistors are present on SDA (GPIO2) and SCL (GPIO1). Each line should have a 2.2k to 4.7k pull-up to 3.3V.
-- Check for shorts or cold solder joints on the I2C bus.
-- Verify the ESP32-S3 is powered correctly (3.3V rail stable).
+**未发现任何设备：**
+- 验证 I2C 上拉电阻存在于 SDA（GPIO2）和 SCL（GPIO1）上。每根信号线应有 2.2k 至 4.7k 的上拉到 3.3V。
+- 检查 I2C 总线上是否有短路或虚焊。
+- 验证 ESP32-S3 供电正常（3.3V 电压轨稳定）。
 
-**Fewer than 6 channel devices:**
-- Check the TCA9548A mux wiring. Each channel (SD0-SD5, pins 4-9) should connect to the SDA of one IS31FL3729. Each channel (SC0-SC5, pins 14-19) should connect to the SCL of one IS31FL3729.
-- Verify the address pins of each IS31FL3729: AD0 and AD1 must both be tied to GND for address 0x34.
+**通道设备少于 6 个：**
+- 检查 TCA9548A 多路复用器接线。每个通道（SD0-SD5，引脚 4-9）应连接到一片 IS31FL3729 的 SDA。每个通道（SC0-SC5，引脚 14-19）应连接到一片 IS31FL3729 的 SCL。
+- 验证每片 IS31FL3729 的地址引脚：AD0 和 AD1 必须都接 GND 以获得地址 0x34。
 
-**400kHz scan fails but 100kHz passes:**
-- Indicates marginal signal integrity. Check pull-up resistor values. For 400kHz, 2.2k pull-ups are recommended.
-- Check for excessive bus capacitance (long wires, many devices).
+**400kHz 扫描失败但 100kHz 通过：**
+- 表明信号完整性处于临界状态。检查上拉电阻值。400kHz 下建议使用 2.2k 上拉。
+- 检查总线电容是否过大（长导线、多设备）。
 
-### 3.5 Restore CMakeLists.txt
+### 3.5 恢复 CMakeLists.txt
 
-After verification, restore the original SRCS line:
+验证完成后，恢复原始 SRCS 行：
 
 ```cmake
     SRCS "app_main.c" "gpio_test.c" "i2c_scan.c" "render_task.c"
@@ -274,13 +274,13 @@ After verification, restore the original SRCS line:
 
 ---
 
-## 4. GPIO Test (Pin Verification)
+## 4. GPIO 测试（引脚验证）
 
-The GPIO test firmware cycles each output pin HIGH then LOW, allowing voltage verification with a multimeter.
+GPIO 测试固件将每个输出引脚依次置为 HIGH 再 LOW，允许用万用表进行电压验证。
 
-### 4.1 Modify CMakeLists.txt
+### 4.1 修改 CMakeLists.txt
 
-Change SRCS to include only `gpio_test.c`:
+将 SRCS 改为仅包含 `gpio_test.c`：
 
 ```cmake
 idf_component_register(
@@ -289,18 +289,18 @@ idf_component_register(
 )
 ```
 
-### 4.2 Build and Flash
+### 4.2 构建并烧录
 
 ```bash
 idf.py build
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-### 4.3 Test Procedure
+### 4.3 测试步骤
 
-The firmware cycles through each pin in an infinite loop. Each pin is driven HIGH for 1 second, then LOW for 1 second.
+固件在无限循环中依次遍历每个引脚。每个引脚先置 HIGH 1 秒，再置 LOW 1 秒。
 
-**Serial output:**
+**串口输出：**
 
 ```
 I (xxx) gpio_test: === Test Cycle 1 ===
@@ -319,46 +319,46 @@ I (xxx) gpio_test: >>> SETTING I2S_MICDATA (Audio Data) (GPIO18) HIGH <<<
 I (xxx) gpio_test: >>> SETTING I2S_MICDATA (Audio Data) (GPIO18) LOW <<<
 ```
 
-**Verified pins:**
+**已验证的引脚：**
 
-| GPIO | Signal          | Expected Behavior                                    |
+| GPIO | 信号 | 预期行为 |
 |------|-----------------|------------------------------------------------------|
-| 8    | SDB             | HIGH=~3.3V, LOW=~0V (enables/disables LED drivers)   |
-| 4    | STATUS LED      | HIGH=LED on, LOW=LED off                             |
-| 15   | I2S_WS          | HIGH=~3.3V, LOW=~0V                                  |
-| 16   | I2S_CLK         | HIGH=~3.3V, LOW=~0V                                  |
-| 18   | I2S_MICDATA     | HIGH=~3.3V, LOW=~0V                                  |
-| 38   | BUTTON          | Input with pull-down; HIGH when pressed              |
+| 8 | SDB | HIGH=~3.3V, LOW=~0V（启用/禁用 LED 驱动） |
+| 4 | STATUS LED | HIGH=LED 亮, LOW=LED 灭 |
+| 15 | I2S_WS | HIGH=~3.3V, LOW=~0V |
+| 16 | I2S_CLK | HIGH=~3.3V, LOW=~0V |
+| 18 | I2S_MICDATA | HIGH=~3.3V, LOW=~0V |
+| 38 | BUTTON | 带下拉的输入；按下时为 HIGH |
 
-**Skipped pins:**
-- GPIO1 (I2C_SCL) and GPIO2 (I2C_SDA): These require the I2C peripheral to drive; they are not tested as GPIO outputs.
-- GPIO43 (TXD0) and GPIO44 (RXD0): UART0 debug console; driven by the USB-to-UART bridge, not tested.
+**跳过的引脚：**
+- GPIO1（I2C_SCL）和 GPIO2（I2C_SDA）：这些引脚需要 I2C 外设驱动，不作为 GPIO 输出测试。
+- GPIO43（TXD0）和 GPIO44（RXD0）：UART0 调试控制台，由 USB 转 UART 桥接器驱动，不测试。
 
-### 4.4 Verification Steps
+### 4.4 验证步骤
 
-1. Place a multimeter in DC voltage mode.
-2. Connect the black probe to GND.
-3. For each pin listed above, touch the red probe to the pin while watching the serial output.
-4. Confirm the voltage matches the expected HIGH (~3.3V) and LOW (~0V) states.
-5. For the button (GPIO38): press the physical button and observe the serial output change from "released" to "PRESSED".
+1. 将万用表置于直流电压模式。
+2. 黑色表笔接 GND。
+3. 对于上表中列出的每个引脚，在查看串口输出的同时将红色表笔接触对应引脚。
+4. 确认电压与预期的 HIGH（~3.3V）和 LOW（~0V）状态一致。
+5. 对于按键（GPIO38）：按下物理按键，观察串口输出从"released"变为"PRESSED"。
 
-### 4.5 Restore CMakeLists.txt
+### 4.5 恢复 CMakeLists.txt
 
-Restore the original SRCS line after testing.
+测试后将 SRCS 行恢复为原始内容。
 
 ---
 
-## 5. Normal Firmware Flash
+## 5. 正常固件烧录
 
-### 5.1 Restore Standard Configuration
+### 5.1 恢复标准配置
 
-Ensure `firmware/main/CMakeLists.txt` contains the original SRCS line:
+确保 `firmware/main/CMakeLists.txt` 包含原始 SRCS 行：
 
 ```cmake
     SRCS "app_main.c" "gpio_test.c" "i2c_scan.c" "render_task.c"
 ```
 
-### 5.2 Build and Flash
+### 5.2 构建并烧录
 
 ```bash
 cd ~/260510_clock/firmware
@@ -367,43 +367,43 @@ idf.py build
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-### 5.3 First-Time Setup (AP Mode)
+### 5.3 首次设置（AP 模式）
 
-On first boot with no saved WiFi credentials:
+首次启动且无已保存的 WiFi 凭据时：
 
-1. The serial monitor shows `WiFi manager started` followed by AP creation.
-2. On your phone or computer, scan for WiFi networks. Find `Clock-Config-XXXX`.
-3. Connect to this access point. No password is required.
-4. Open a browser and navigate to `http://192.168.4.1`.
-5. The configuration page allows you to:
-   - Select your home WiFi network (SSID).
-   - Enter the WiFi password.
-   - Configure the MQTT backend URL (default: `mqtt://192.168.1.100:1883`).
-6. Submit the configuration.
-7. The ESP32-S3 reboots and attempts to connect to your WiFi.
+1. 串口监控显示 `WiFi manager started`，随后创建 AP。
+2. 在手机或电脑上扫描 WiFi 网络。找到 `Clock-Config-XXXX`。
+3. 连接到此接入点，无需密码。
+4. 打开浏览器并导航到 `http://192.168.4.1`。
+5. 配置页面允许你：
+   - 选择家庭 WiFi 网络（SSID）。
+   - 输入 WiFi 密码。
+   - 配置 MQTT 后端 URL（默认：`mqtt://192.168.1.100:1883`）。
+6. 提交配置。
+7. ESP32-S3 重启并尝试连接你的 WiFi。
 
-### 5.4 Subsequent Boots
+### 5.4 后续启动
 
-After successful WiFi configuration:
+成功配置 WiFi 后：
 
-1. The firmware reads saved credentials from NVS.
-2. WiFi connects in STA mode.
-3. IP-based geolocation determines the timezone.
-4. NTP synchronizes the system clock.
-5. The display shows the current time.
-6. MQTT connects to the configured backend for remote control.
+1. 固件从 NVS 读取已保存的凭据。
+2. WiFi 以 STA 模式连接。
+3. 基于 IP 的地理定位确定时区。
+4. NTP 同步系统时钟。
+5. 显示屏显示当前时间。
+6. MQTT 连接到已配置的后端以进行远程控制。
 
-**Note:** The WiFi connection supports 2.4GHz networks only. 5GHz networks are not supported by the ESP32-S3.
+**注意：** WiFi 连接仅支持 2.4GHz 网络。ESP32-S3 不支持 5GHz 网络。
 
 ---
 
-## 6. Hardware Integration Test
+## 6. 硬件集成测试
 
-A comprehensive hardware test firmware (`hw_test_all.c`) must be created that sequentially tests all subsystems.
+需要创建一个综合硬件测试固件（`hw_test_all.c`），按顺序测试所有子系统。
 
-### 6.1 Create the Test File
+### 6.1 创建测试文件
 
-Create `firmware/main/hw_test_all.c` with the following structure:
+创建 `firmware/main/hw_test_all.c`，结构如下：
 
 ```c
 /**
@@ -472,154 +472,154 @@ void app_main(void)
 }
 ```
 
-**Note:** This is a skeleton. The full implementation requires integrating the LED driver initialization, I2C scan logic, AHT21 read, and button detection from the existing component libraries. This file does not yet exist in the repository.
+**注意：** 这是骨架代码。完整实现需要集成来自现有组件库的 LED 驱动初始化、I2C 扫描逻辑、AHT21 读取和按键检测。该文件在仓库中尚不存在。
 
-### 6.2 Build and Flash
+### 6.2 构建并烧录
 
 ```bash
-# Edit CMakeLists.txt: SRCS "hw_test_all.c"
+# 编辑 CMakeLists.txt: SRCS "hw_test_all.c"
 idf.py build
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-### 6.3 Run Through Tests
+### 6.3 逐项执行测试
 
-Follow each prompt. After each test step, visually confirm the result and respond (via serial input if implemented, or by observation if the test is output-only).
+按照每个提示执行。在每个测试步骤后，目视确认结果并响应（若已实现串口输入），或者通过观察确认（若测试仅为输出型）。
 
 ---
 
-## 7. Troubleshooting
+## 7. 故障排除
 
-### 7.1 No Serial Output
+### 7.1 无串口输出
 
-- **Verify baud rate:** The ESP-IDF monitor uses 115200 by default. Ensure your terminal is set to 115200 if using a separate serial program.
-- **Check USB cable:** The cable must be a data cable, not a charge-only cable. Test by checking if `dmesg` (Linux) or Device Manager (Windows) shows a new device when connected.
-- **Check port:** Verify you are using the correct port. On Linux, `ls /dev/ttyUSB*` before and after connecting. The new entry is your device.
-- **Verify device is powered:** The on-board power LED should be lit. If not, check the USB connection and try a different port.
-- **Try manual serial terminal:** Use `screen`, `minicom`, or `picocom` directly:
+- **验证波特率：** ESP-IDF 监控器默认使用 115200。如果使用独立的串口程序，确保终端设置为 115200。
+- **检查 USB 数据线：** 数据线必须是数据线而非纯充电线。通过检查连接时 `dmesg`（Linux）或设备管理器（Windows）是否显示新设备来验证。
+- **检查端口：** 确保使用正确的端口。在 Linux 上，连接前后执行 `ls /dev/ttyUSB*`，新出现的条目即为你的设备。
+- **验证设备已上电：** 板载电源 LED 应亮起。若不亮，检查 USB 连接并尝试其他端口。
+- **尝试手动串口终端：** 直接使用 `screen`、`minicom` 或 `picocom`：
   ```bash
   screen /dev/ttyUSB0 115200
-  # Exit screen: Ctrl+A, then K, then Y
+  # 退出 screen: Ctrl+A，然后 K，再 Y
   ```
 
-### 7.2 I2C Scan Shows No Devices
+### 7.2 I2C 扫描无设备
 
-- **SDB pin:** Measure GPIO8 voltage. It must be ~3.3V during channel scanning. If the pin is stuck LOW, the IS31FL3729 drivers remain in shutdown and do not respond on I2C.
-- **Pull-up resistors:** Verify 2.2k to 4.7k pull-up resistors are installed on SDA (GPIO2) and SCL (GPIO1) to 3.3V. Without pull-ups, the I2C bus cannot function.
-- **Power:** Verify the 3.3V rail is stable. I2C devices require clean power.
-- **Solder joints:** Inspect all I2C device solder joints under magnification. A single cold joint on SDA or SCL can disable the entire bus.
+- **SDB 引脚：** 测量 GPIO8 电压。通道扫描期间必须为 ~3.3V。若引脚卡在 LOW，IS31FL3729 驱动保持关断状态，不在 I2C 上响应。
+- **上拉电阻：** 验证 SDA（GPIO2）和 SCL（GPIO1）上安装了 2.2k 至 4.7k 的上拉电阻到 3.3V。无上拉电阻时 I2C 总线无法工作。
+- **供电：** 验证 3.3V 电压轨稳定。I2C 设备需要清洁的电源。
+- **焊点：** 在放大镜下检查所有 I2C 设备焊点。SDA 或 SCL 上一个虚焊就可能导致整个总线失效。
 
-### 7.3 LED Matrix Not Lighting
+### 7.3 LED 矩阵不亮
 
-- **GCC (Global Current Control):** The IS31FL3729 power-on default may set GCC to a very low value, making LEDs appear off. The initialization sequence in `is31fl3729_init()` sets GCC to a visible level.
-- **SDB pin:** The SDB pin (GPIO8) must be HIGH to enable the LED drivers. If LOW, all drivers are in shutdown mode and all LED outputs are high-impedance.
-- **3729 initialization:** Verify that `is31fl3729_init()` is called for each of the 6 channels during startup. The app_main.c init loop iterates channels 0 through 5.
-- **TCA9548A mux:** If the mux is not initializing correctly, no channel selection occurs and the IS31FL3729 drivers cannot be addressed. Verify TCA9548A appears at 0x70 during I2C scan.
+- **GCC（全局电流控制）：** IS31FL3729 上电默认值可能将 GCC 设为极低值，使 LED 看似熄灭。`is31fl3729_init()` 中的初始化流程会将 GCC 设置到可见的水平。
+- **SDB 引脚：** SDB 引脚（GPIO8）必须为 HIGH 以启用 LED 驱动。若为 LOW，所有驱动处于关断模式，全部 LED 输出为高阻态。
+- **3729 初始化：** 验证在启动期间对 6 个通道均调用了 `is31fl3729_init()`。app_main.c 的初始化循环遍历通道 0 至 5。
+- **TCA9548A 多路复用器：** 若多路复用器未正确初始化，则不会发生通道选择，无法寻址 IS31FL3729 驱动。在 I2C 扫描中验证 TCA9548A 出现在 0x70。
 
-### 7.4 WiFi Connection Failure
+### 7.4 WiFi 连接失败
 
-- **2.4GHz only:** The ESP32-S3 supports 2.4GHz WiFi only. 5GHz networks are not visible to the device.
-- **SSID contains special characters:** Some special characters or spaces in SSIDs may cause connection issues. Test with a simple ASCII SSID first.
-- **Signal strength:** If the device is inside a metal enclosure or far from the access point, signal may be insufficient. Test close to the router first.
-- **Saved credentials corruption:** If stored WiFi credentials become corrupted, erase NVS:
+- **仅支持 2.4GHz：** ESP32-S3 仅支持 2.4GHz WiFi。设备无法看到 5GHz 网络。
+- **SSID 包含特殊字符：** SSID 中的某些特殊字符或空格可能导致连接问题。先用简单的 ASCII SSID 测试。
+- **信号强度：** 若设备在金属外壳内或距离接入点太远，信号可能不足。先靠近路由器测试。
+- **已保存凭据损坏：** 若存储的 WiFi 凭据损坏，擦除 NVS：
   ```bash
   idf.py -p /dev/ttyUSB0 erase-flash
   idf.py -p /dev/ttyUSB0 flash monitor
   ```
-  This clears all saved settings, forcing a fresh AP mode setup on next boot.
+  这将清除所有已保存的设置，强制下次启动时进入全新的 AP 模式设置。
 
-### 7.5 Flash Failure (Download Mode)
+### 7.5 烧录失败（下载模式）
 
-If `idf.py flash` fails with a connection error or timeout:
+若 `idf.py flash` 因连接错误或超时而失败：
 
-1. **Manual bootloader entry:**
-   - Hold the **BOOT** button (labeled "BOOT" or "IO0" on most ESP32-S3 boards).
-   - While holding BOOT, press and release the **RST** (or "EN") button.
-   - Release the BOOT button after 1-2 seconds.
-   - The chip now listens for a firmware download.
-   - Re-run `idf.py -p /dev/ttyUSB0 flash`.
-2. **Alternative:** Hold BOOT throughout the entire flash process. Release only after you see progress output ("Writing at 0x...").
-3. **Check USB cable:** Replace with a known-good data cable. Some cables are power-only.
-4. **Check port permissions (Linux):** Ensure your user is in the `dialout` group:
+1. **手动进入 bootloader：**
+   - 按住 **BOOT** 按钮（多数 ESP32-S3 开发板上标注为 "BOOT" 或 "IO0"）。
+   - 按住 BOOT 的同时，按下并释放 **RST**（或 "EN"）按钮。
+   - 1-2 秒后释放 BOOT 按钮。
+   - 此时芯片等待固件下载。
+   - 重新执行 `idf.py -p /dev/ttyUSB0 flash`。
+2. **替代方法：** 在整个烧录过程中按住 BOOT。仅在看到进度输出（"Writing at 0x..."）后释放。
+3. **检查 USB 数据线：** 更换为已知可用的数据线。某些数据线仅供电。
+4. **检查端口权限（Linux）：** 确保你的用户在 `dialout` 组中：
    ```bash
    sudo usermod -a -G dialout $USER
-   # Log out and back in for the change to take effect
+   # 注销后重新登录使更改生效
    ```
 
-### 7.6 OTA Rollback
+### 7.6 OTA 回滚
 
-If an OTA update fails, the bootloader's rollback feature reverts to the previous working firmware. The serial output during boot shows `ota_check_rollback()` if a rollback occurred. This is normal and indicates the system is self-recovering.
+若 OTA 更新失败，bootloader 的回滚功能会恢复至上一可用的固件。若发生回滚，启动时的串口输出会显示 `ota_check_rollback()`。这是正常现象，表明系统正在自我恢复。
 
 ---
 
-## 8. Pin Reference
+## 8. 引脚参考
 
-All GPIO assignments from `firmware/components/config/include/pinmap.h`:
+来自 `firmware/components/config/include/pinmap.h` 的全部 GPIO 分配：
 
-### I2C Bus
+### I2C 总线
 
-| Signal | GPIO | Notes                                    |
+| 信号 | GPIO | 备注 |
 |--------|------|------------------------------------------|
-| SCL    | 1    | I2C clock, 2.2k-4.7k pull-up to 3.3V    |
-| SDA    | 2    | I2C data, 2.2k-4.7k pull-up to 3.3V     |
+| SCL | 1 | I2C 时钟，2.2k-4.7k 上拉到 3.3V |
+| SDA | 2 | I2C 数据，2.2k-4.7k 上拉到 3.3V |
 
-### LED Matrix Control
+### LED 矩阵控制
 
-| Signal | GPIO | Notes                                              |
+| 信号 | GPIO | 备注 |
 |--------|------|----------------------------------------------------|
-| SDB    | 8    | Shutdown for all 6 IS31FL3729 drivers (active HIGH) |
+| SDB | 8 | 全部 6 个 IS31FL3729 驱动的关断控制（高电平有效） |
 
-### Status Indicator
+### 状态指示
 
-| Signal      | GPIO | Notes                        |
+| 信号 | GPIO | 备注 |
 |-------------|------|------------------------------|
-| STATUS LED  | 4    | On-board indicator LED       |
+| STATUS LED | 4 | 板载指示灯 |
 
-### User Input
+### 用户输入
 
-| Signal | GPIO | Notes                                |
+| 信号 | GPIO | 备注 |
 |--------|------|--------------------------------------|
-| BUTTON | 38   | Active HIGH, external pull-down      |
+| BUTTON | 38 | 高电平有效，外部下拉 |
 
-### I2S Audio (Phase 2)
+### I2S 音频（Phase 2）
 
-| Signal      | GPIO | Notes          |
+| 信号 | GPIO | 备注 |
 |-------------|------|----------------|
-| I2S_WS      | 15   | Word select    |
-| I2S_CLK     | 16   | Bit clock      |
-| I2S_MICDATA | 18   | Microphone data|
+| I2S_WS | 15 | 字选 |
+| I2S_CLK | 16 | 位时钟 |
+| I2S_MICDATA | 18 | 麦克风数据 |
 
-### USB (Native)
+### USB（原生）
 
-| Signal | GPIO | Notes                                      |
+| 信号 | GPIO | 备注 |
 |--------|------|--------------------------------------------|
-| D-     | 19   | USB OTG data minus (not used as GPIO)       |
-| D+     | 20   | USB OTG data plus (not used as GPIO)        |
+| D- | 19 | USB OTG 数据负（不作为 GPIO 使用） |
+| D+ | 20 | USB OTG 数据正（不作为 GPIO 使用） |
 
-### UART0 (Debug Console)
+### UART0（调试控制台）
 
-| Signal | GPIO | Notes                                      |
+| 信号 | GPIO | 备注 |
 |--------|------|--------------------------------------------|
-| TXD0   | 43   | UART transmit (connected to USB bridge TX)  |
-| RXD0   | 44   | UART receive (connected to USB bridge RX)   |
+| TXD0 | 43 | UART 发送（连接到 USB 桥接器 TX） |
+| RXD0 | 44 | UART 接收（连接到 USB 桥接器 RX） |
 
-### Default Firmware Parameters
+### 默认固件参数
 
-| Parameter              | Value                         | Source            |
+| 参数 | 值 | 来源 |
 |------------------------|-------------------------------|-------------------|
-| Firmware version       | 0.1.0                         | app_main.c:31     |
-| Hardware revision      | 0.1                           | app_main.c:32     |
-| I2C frequency          | 400 kHz                       | app_main.c:30     |
-| I2C port               | I2C_NUM_0                     | app_main.c:29     |
-| Flash size             | 16 MB                         | sdkconfig.defaults:35-36 |
-| Factory partition      | 3 MB (0x300000)               | partitions.csv:5  |
-| OTA partitions (x2)    | 3 MB each                     | partitions.csv:6-7 |
-| SPIFFS storage         | 2 MB (0x200000)               | partitions.csv:9  |
-| FreeRTOS tick rate     | 1000 Hz                       | sdkconfig.defaults:34 |
-| Default MQTT broker    | mqtt://192.168.1.100:1883     | app_main.c:33     |
-| WiFi AP SSID pattern   | Clock-Config-XXXX             | wifi_mgr component|
+| 固件版本 | 0.1.0 | app_main.c:31 |
+| 硬件版本 | 0.1 | app_main.c:32 |
+| I2C 频率 | 400 kHz | app_main.c:30 |
+| I2C 端口 | I2C_NUM_0 | app_main.c:29 |
+| Flash 大小 | 16 MB | sdkconfig.defaults:35-36 |
+| Factory 分区 | 3 MB (0x300000) | partitions.csv:5 |
+| OTA 分区（×2） | 各 3 MB | partitions.csv:6-7 |
+| SPIFFS 存储 | 2 MB (0x200000) | partitions.csv:9 |
+| FreeRTOS 滴答频率 | 1000 Hz | sdkconfig.defaults:34 |
+| 默认 MQTT Broker | mqtt://192.168.1.100:1883 | app_main.c:33 |
+| WiFi AP SSID 模式 | Clock-Config-XXXX | wifi_mgr 组件 |
 
-### Partition Layout
+### 分区布局
 
 ```
 Offset     Size       Name        Type     SubType
@@ -635,36 +635,36 @@ Offset     Size       Name        Type     SubType
 
 ---
 
-## Quick Command Reference
+## 快速命令参考
 
 ```bash
-# Enter project directory
+# 进入项目目录
 cd ~/260510_clock/firmware
 
-# Source ESP-IDF
+# 加载 ESP-IDF 环境
 . ~/.espressif/v5.5.4/esp-idf/export.sh
 
-# Set target (one-time)
+# 设置目标（一次性）
 idf.py set-target esp32s3
 
-# Build
+# 构建
 idf.py build
 
-# Flash and monitor
+# 烧录并监控
 idf.py -p /dev/ttyUSB0 flash monitor
 
-# Monitor only (no flash)
+# 仅监控（不烧录）
 idf.py -p /dev/ttyUSB0 monitor
 
-# Erase entire flash
+# 擦除全部 flash
 idf.py -p /dev/ttyUSB0 erase-flash
 
-# Clean build artifacts
+# 清理构建产物
 idf.py fullclean
 
-# Flash with manual download mode (hold BOOT, press RST, release BOOT)
+# 手动下载模式烧录（按住 BOOT，按 RST，释放 BOOT）
 idf.py -p /dev/ttyUSB0 flash
 
-# Exit serial monitor
-# Press: Ctrl + ]
+# 退出串口监控
+# 按下: Ctrl + ]
 ```
