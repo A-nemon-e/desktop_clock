@@ -14,12 +14,11 @@ _async_session_maker = None
 async def get_engine():
     global _engine
     if _engine is None:
-        _engine = create_async_engine(
-            settings.DATABASE_URL,
-            echo=False,
-            pool_size=20,
-            max_overflow=10,
-        )
+        url = settings.effective_database_url
+        if settings.TESTING:
+            _engine = create_async_engine(url, echo=False)
+        else:
+            _engine = create_async_engine(url, echo=False, pool_size=20, max_overflow=10)
     return _engine
 
 
